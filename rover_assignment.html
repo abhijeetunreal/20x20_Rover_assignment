@@ -1,0 +1,1345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Rover 20x20: ADP vs Q-Learning — RL Assignment</title>
+  <meta name="description" content="Interactive comparison of Passive ADP and Q-Learning on a 20x20 grid. RL assignment using REINFORCEjs.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="external/jquery-2.1.3.min.js"></script>
+  <link href="external/jquery-ui.min.css" rel="stylesheet">
+  <script src="external/jquery-ui.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+  <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+  <script type="text/javascript" src="external/d3.min.js"></script>
+  <script type="text/javascript" src="lib/rl.js"></script>
+  <script src="external/jquery.flot.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; margin: 0; }
+    #wrap { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 12px; }
+    #draw { margin: 12px 0; }
+    .grid-wrapper { max-width: 100%; overflow-x: auto; margin: 12px 0; }
+    h2 { text-align: center; font-size: 24px; margin: 16px 0 8px; }
+    .results-table { margin-top: 16px; font-size: 14px; overflow-x: auto; }
+    .results-table th, .results-table td { padding: 6px 10px; }
+    button { margin: 4px; min-height: 44px; }
+    button:focus, select:focus, input:focus { outline: 2px solid #36c; outline-offset: 2px; }
+    .section-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .section-card h4 { margin: 0 0 12px; font-size: 14px; color: #495057; }
+    .assignment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .assignment-actions .btn { flex: 1 1 auto; min-width: 140px; }
+    .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
+    .control-group { display: flex; align-items: center; gap: 6px; }
+    .chart-container { width: 100%; max-width: 700px; margin-top: 16px; overflow-x: auto; }
+    .chart-container .chart-inner { width: 100%; height: 350px; min-width: 280px; }
+    #implementationInsight { margin-top: 24px; padding: 24px; background: linear-gradient(to bottom, #fafafa, #f0f0f0); border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    #implementationInsight h3 { margin-top: 0; color: #333; border-bottom: 2px solid #36c; padding-bottom: 8px; }
+    #implementationInsight h4 { color: #444; margin: 24px 0 12px; font-size: 16px; }
+    #implementationInsight .step-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    #implementationInsight .eq-block { background: #f8f9fa; border-left: 4px solid #36c; padding: 12px 16px; margin: 12px 0; font-family: Consolas, Monaco, monospace; font-size: 13px; overflow-x: auto; }
+    #implementationInsight .code-ref { background: #e8eef4; padding: 8px 12px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 12px; margin-top: 8px; }
+    #implementationInsight .flow-list { list-style: none; padding-left: 0; }
+    #implementationInsight .flow-list li { padding: 6px 0; padding-left: 20px; position: relative; }
+    #implementationInsight .flow-list li:before { content: "→"; position: absolute; left: 0; color: #36c; font-weight: bold; }
+    #implementationInsight .label { font-weight: bold; color: #555; display: inline-block; min-width: 100px; }
+    #implementationInsight .mermaid { background: #fff; padding: 16px; border-radius: 6px; border: 1px solid #ddd; margin: 16px 0; overflow-x: auto; }
+    details { margin: 16px 0; }
+    details summary { cursor: pointer; font-weight: 600; padding: 8px 0; color: #36c; }
+    details[open] summary { margin-bottom: 12px; }
+    .why-fail-summary { padding: 8px; background: #fff3cd; border-left: 4px solid #856404; font-size: 13px; }
+    @media (max-width: 768px) {
+      #wrap { padding: 0 8px; }
+      #mynav h1 { font-size: 24px !important; }
+      h2 { font-size: 20px; }
+      .nav-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+      .nav-pills li { margin: 2px 0; }
+      .assignment-actions { flex-direction: column; align-items: stretch; }
+      .assignment-actions .btn { min-width: 0; width: 100%; }
+      .control-row { flex-direction: column; align-items: flex-start; }
+      .control-group { width: 100%; }
+      .control-group label { min-width: 80px; }
+      .section-card { padding: 12px; margin: 12px 0; }
+      #implementationInsight, #learningOutcomes { padding: 16px; margin-top: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="wrap">
+  <div id="mynav" style="border-bottom:1px solid #999; padding-bottom:10px; margin-bottom:20px;">
+    <div><img src="loop.svg" style="width:40px;height:40px;float:left;"><h1 style="font-size:40px;margin:0;">Rover Assignment</h1></div>
+    <ul class="nav nav-pills" style="margin-top:8px;">
+      <li><a href="index.html">About</a></li>
+      <li class="active"><a href="rover_assignment.html">Rover 20x20</a></li>
+    </ul>
+  </div>
+
+  <h2>2-DoF Rover: Passive ADP vs Active Q-Learning</h2>
+  <p>20×20 grid with fixed blocks. Assumed stochastic transition matrix (0.8 intended, 0.1 slip left, 0.1 slip right).</p>
+
+  <div id="explain" class="section-card">
+    <strong>How it works</strong>
+    <ul style="margin:8px 0 0 18px;">
+      <li><b>Generate 30+ trajectories:</b> Passive policy collects (s,a,s') over 10 source–destination pairs.</li>
+      <li><b>Passive ADP:</b> Fixed random policy; only learns the transition model (TPM) from counts; no policy improvement.</li>
+      <li><b>Q-Learning:</b> Updates Q(s,a) from experience; policy improves over time (active learning).</li>
+      <li><b>Compare:</b> Same pairs and env; compare path length and success rate; view trajectories and the comparison chart below.</li>
+    </ul>
+    <details class="why-fail-summary" style="margin-top:12px;">
+      <summary>Why do many runs fail?</summary>
+      <p style="margin:8px 0 0 0;">Yes, the <strong>low number of iterations</strong> is a main reason. We use only 20 trajectories (2 per pair) for ADP and Q-Learning. <b>Passive ADP</b> uses a random policy, so it often never reaches the goal within 500 steps. <b>Q-Learning</b> needs many more episodes to learn good Q-values on a 20×20 grid; with just 20 runs the policy is still mostly exploring. The environment is also stochastic (0.8 intended, 0.1 slip each way), so paths are longer. Running more trajectories (e.g. by increasing the loop counts in the code) or reducing epsilon over time would improve success rate.</p>
+    </details>
+  </div>
+
+  <div class="section-card">
+    <h4>Assignment steps</h4>
+    <label style="display:block; margin-bottom:8px;"><input type="checkbox" id="useSavedExperience"> Use saved experience for assignment runs</label>
+    <div class="assignment-actions">
+      <button class="btn btn-primary" id="btnGenTraj">Generate 30+ trajectories (10 pairs)</button>
+      <button class="btn btn-info" id="btnRunADP">Run passive ADP (20 trajectories)</button>
+      <button class="btn btn-success" id="btnRunQL">Run Q-Learning (20 trajectories)</button>
+      <button class="btn btn-warning" id="btnCompareTraj">Compare trajectories</button>
+      <button class="btn btn-default" id="btnCompareTPM">Compare TPM (learned vs assumed)</button>
+      <span class="control-group"><label>Step delay (ms):</label><input type="number" id="stepDelayMs" value="150" min="50" max="500" step="50" style="width:60px;"></span>
+      <button class="btn btn-danger btn-sm" id="btnStop" disabled>Stop</button>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <h4>Grid view</h4>
+    <div id="trajControls" class="control-row">
+      <span class="control-group"><label>Pair:</label><select id="trajPairSelect"><option value="0">1</option></select></span>
+      <span class="control-group"><label>Show:</label><select id="trajAgentSelect"><option value="adp">ADP</option><option value="ql">Q-Learning</option><option value="both">Both</option></select></span>
+      <span class="control-group"><label>Trajectory:</label><select id="trajWhichSelect"><option value="all">All</option></select></span>
+      <span class="control-group"><label>Policy:</label><select id="policySelect"><option value="none">None</option><option value="adp">ADP</option><option value="ql">Q-Learning</option></select></span>
+    </div>
+    <div id="animControls" class="control-row">
+      <span class="control-group"><label>Animate:</label><select id="animTrajSelect"><option value="">— Select trajectory —</option></select></span>
+      <button class="btn btn-sm btn-default" id="btnAnimPlay">Play</button>
+      <button class="btn btn-sm btn-default" id="btnAnimPause">Pause</button>
+      <button class="btn btn-sm btn-default" id="btnAnimStep">Step</button>
+      <span id="animStatus">Step: — Reward: —</span>
+    </div>
+    <div class="grid-wrapper">
+      <div id="draw"></div>
+    </div>
+  </div>
+
+  <div id="trajResults" class="results-table"></div>
+  <div class="chart-container">
+    <div id="comparisonChart" class="chart-inner"></div>
+  </div>
+  <div id="tpmResults" class="results-table"></div>
+
+  <div id="liveTrainingSection" class="section-card" style="background:#f0f8ff; border-color:#7eb8da;">
+    <h3 style="margin-top:0; color:#1a365d; font-size:18px;">Live training mode (run as long as you want)</h3>
+    <p style="margin:8px 0 14px 0; color:#555; font-size:14px;">Run ADP and/or Q-Learning continuously; the graph updates in real time. Separate from the fixed assignment above.</p>
+    <div class="control-row">
+      <label><input type="checkbox" id="liveTrainADP" checked> Passive ADP</label>
+      <label><input type="checkbox" id="liveTrainQL" checked> Q-Learning</label>
+    </div>
+    <div class="control-row">
+      <button class="btn btn-primary" id="btnLiveStart">Start training</button>
+      <button class="btn btn-danger" id="btnLiveStop" disabled>Stop training</button>
+      <button class="btn btn-default" id="btnSaveExperience">Save experience</button>
+    </div>
+    <p id="liveTrainingStatus" style="margin:8px 0; font-size:14px;">ADP: 0 episodes, success rate —%. Q-Learning: 0 episodes, success rate —%.</p>
+    <div class="chart-container">
+      <div id="liveTrainingChart" class="chart-inner"></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Show implementation details</summary>
+  <div id="implementationInsight">
+    <h3>Step-by-step implementation insight</h3>
+    <p style="margin-bottom:24px; color:#555;">How the assignment is implemented: equations, code, and data flow.</p>
+
+    <div class="step-card">
+      <h4>Step 1 — Environment (2-DoF rover grid)</h4>
+      <p><span class="label">State</span> Linear index <code>s = x·gh + y</code> (gh = gw = 20), so 0 ≤ s &lt; 400. Coordinates: <code>x = floor(s/20)</code>, <code>y = s mod 20</code>.</p>
+      <p><span class="label">Actions</span> 0=left, 1=up, 2=down, 3=right (only in-bounds, non-block).</p>
+      <p><span class="label">Reward</span> +1 at goal, −0.01 per step otherwise.</p>
+      <div class="code-ref">RoverGrid20, xytos(x,y), stox(s), stoy(s), allowedActions(s), reward(s,a,ns)</div>
+    </div>
+
+    <div class="step-card">
+      <h4>Step 2 — Assumed TPM</h4>
+      <p>For each (s, a), next-state probabilities:</p>
+      <div class="eq-block">P(s'|s,a) = 0.8 (intended) + 0.1 (slip left) + 0.1 (slip right)  ;  Σ P(s'|s,a) = 1</div>
+      <p>Blocked/out-of-bounds mass stays at s. We sample s' from this distribution; reward = +1 if s' is goal, else R(s).</p>
+      <div class="code-ref">buildAssumedTPM(), getAssumedTPM(), sampleNextState(s,a)  ;  index sa = a·gs + s</div>
+    </div>
+
+    <div class="step-card">
+      <h4>Step 3 — Trajectory generation</h4>
+      <p>Episode loop:</p>
+      <ul class="flow-list">
+        <li>Start at source. Get action <code>a = agent.act(s)</code>.</li>
+        <li>Step env: <code>(s', r) = env.sampleNextState(s, a)</code>; append s' to trajectory.</li>
+        <li>Learn: ADP → <code>learnFromTransition(s,a,s')</code>; QL → <code>learn(r)</code>.</li>
+        <li>Set <code>s = s'</code>. Stop at goal or max steps.</li>
+      </ul>
+      <div class="code-ref">runEpisode(env, agent, source, dest, maxSteps, recordForADP)</div>
+    </div>
+
+    <div class="step-card">
+      <h4>Step 4 — Passive ADP</h4>
+      <p><span class="label">Policy</span> π(a|s) uniform over allowed actions; never updated.</p>
+      <p><span class="label">Counts</span> For each (s, a, s') observed, increment n(s,a,s').</p>
+      <div class="eq-block">P_learned(s'|s,a) = n(s,a,s') / Σ<sub>s''</sub> n(s,a,s'')</div>
+      <p><span class="label">Bellman (optional)</span> V(s) from learned TPM and fixed π:</p>
+      <div class="eq-block">V(s) = Σ<sub>a</sub> π(a|s) · Σ<sub>s'</sub> P_learned(s'|s,a) · [ R(s,a,s') + γ·V(s') ]  ;  γ = 0.9</div>
+      <div class="code-ref">PassiveADPAgent.learnFromTransition(s,a,s'), getLearnedTPM(), evaluatePolicyUsingLearnedModel()</div>
+    </div>
+
+    <div class="step-card">
+      <h4>Step 5 — Q-Learning</h4>
+      <div class="eq-block">Q(s,a) ← Q(s,a) + α · [ r + γ · max<sub>a'</sub> Q(s',a') − Q(s,a) ]  ;  α = learning rate, γ = discount</div>
+      <p><span class="label">Policy</span> ε-greedy: with prob ε random action, else argmax<sub>a</sub> Q(s,a).</p>
+      <div class="code-ref">RL.TDAgent (update: 'qlearn', gamma, alpha, epsilon), agent.act(s), agent.learn(r)</div>
+    </div>
+
+    <div class="step-card">
+      <h4>Step 6 — Comparison</h4>
+      <p><span class="label">Trajectories</span> Per pair: avg steps and success count for ADP vs QL; table and line chart.</p>
+      <div class="eq-block">MSE = (1/|SA|) · Σ<sub>s,a</sub> Σ<sub>s'</sub> ( P_assumed(s'|s,a) − P_learned(s'|s,a) )²</div>
+      <div class="code-ref">runCompareTrajectories(), drawComparisonChart(), compareTPM(env, adpAgent)</div>
+    </div>
+
+    <div class="step-card" style="border-left:4px solid #2e7d32;">
+      <h4>Learning after every iteration</h4>
+      <p>Both agents update internal state on <strong>every step</strong> of the episode loop.</p>
+      <p><span class="label">Q-Learning</span> Each step calls <code>agent.learn(r)</code>. The library uses the previous transition (s<sub>0</sub>, a<sub>0</sub>, r<sub>0</sub>, s<sub>1</sub>) and performs one Q-update:</p>
+      <div class="eq-block">Q(s,a) ← Q(s,a) + α · [ r + γ · max<sub>a'</sub> Q(s',a') − Q(s,a) ]</div>
+      <p>So <strong>one</strong> Q-value is updated every step; the policy at that state is then set to greedy over Q. The policy therefore improves as Q improves.</p>
+      <p><span class="label">Passive ADP</span> Each step calls <code>learnFromTransition(s, a, s')</code>, which only increments a count: <code>counts["s,a,s'"] += 1</code>. The learned TPM is <em>not</em> recomputed every step—it is derived when you call <code>getLearnedTPM()</code> (normalize counts). The policy π(a|s) is fixed (e.g. uniform) and never updated.</p>
+      <p><strong>Summary:</strong> Q-Learning updates Q (and thus the policy) every step; Passive ADP updates transition counts every step and builds P_learned from those counts when requested.</p>
+    </div>
+
+    <h4>Data flow</h4>
+    <div class="mermaid" id="mermaidFlow">
+flowchart LR
+  subgraph env [Environment]
+    TPM[Assumed TPM]
+    R[Reward]
+    sample[sampleNextState]
+  end
+  subgraph agent [Agent]
+    ADP[Passive ADP]
+    QL[Q-Learning]
+  end
+  subgraph out [Output]
+    traj[Trajectories]
+    compare[Compare]
+    tpmMSE[TPM MSE]
+  end
+  TPM --> sample
+  R --> sample
+  sample -->|s2, r| agent
+  agent -->|action a| sample
+  agent --> traj
+  traj --> compare
+  ADP --> tpmMSE
+    </div>
+  </div>
+  </details>
+
+  <details>
+    <summary>Show learning outcomes</summary>
+  <div id="learningOutcomes" style="margin-top:16px; padding:24px; background:linear-gradient(to bottom, #f0f4f8, #e8eef4); border:1px solid #ccc; border-radius:8px; font-size:14px;">
+    <h3 style="margin-top:0; color:#1a365d; border-bottom:2px solid #2e7d32; padding-bottom:8px;">Final learning outcomes</h3>
+    <p>This assignment showed <strong>two different ways</strong> an agent can learn in the same grid world: one that only learns a <em>model</em> of how the world behaves (Passive ADP), and one that learns <em>what to do</em> from experience (Q-Learning).</p>
+    <p><strong>Passive vs active learning:</strong></p>
+    <ul style="margin:8px 0 0 18px;">
+      <li><b>Passive:</b> The agent follows a fixed policy (e.g. random moves). It does not try to improve its behavior; it only gathers data and learns the transition model (how often each state–action pair leads to each next state).</li>
+      <li><b>Active:</b> The agent updates its policy over time. Q-Learning improves its Q-values and thus its choices, so behavior gets better with more experience.</li>
+    </ul>
+    <p><strong>Model-based vs model-free:</strong></p>
+    <ul style="margin:8px 0 0 18px;">
+      <li><b>Passive ADP</b> is model-based: it builds an estimate of the transition probabilities from counts. You can then use that model for value iteration or analysis.</li>
+      <li><b>Q-Learning</b> is model-free: it learns values and policy directly from (state, action, reward, next state) samples without storing a full transition model.</li>
+    </ul>
+    <p><strong>Skills and concepts you practiced:</strong></p>
+    <ul style="margin:8px 0 0 18px;">
+      <li>Running episodes and collecting trajectories.</li>
+      <li>Seeing how a fixed policy (ADP) vs an improving policy (Q-Learning) behave on the same task.</li>
+      <li>Comparing algorithms (steps, success rate, charts).</li>
+      <li>Relating code (e.g. <code>learnFromTransition</code>, <code>agent.learn(r)</code>) to the “learning after every iteration” idea.</li>
+      <li>This gives a foundation for more advanced reinforcement learning (policy gradients, deep RL, etc.).</li>
+    </ul>
+    <p style="margin-bottom:0;"><strong>Takeaway:</strong> You now have a concrete feel for how passive model learning and active value-based learning differ on the same environment—a core distinction in reinforcement learning.</p>
+  </div>
+  </details>
+</div>
+
+<script type="application/javascript">
+
+// ----- 1. Rover 20x20 environment -----
+var RoverGrid20 = function() {
+  this.gh = 20;
+  this.gw = 20;
+  this.gs = this.gh * this.gw;
+  this.na = 4;
+  this.goalState = 0;
+  this.P_INTENDED = 0.8;
+  this.P_SLIP = 0.1;
+  this.reset();
+};
+
+RoverGrid20.prototype = {
+  reset: function() {
+    var gs = this.gs, gh = this.gh, gw = this.gw;
+    var Rarr = R.zeros(gs);
+    var T = R.zeros(gs);
+    for (var i = 0; i < gs; i++) { Rarr[i] = -0.01; }
+    var self = this;
+    function block(x, y) {
+      if (x < 0 || x >= gw || y < 0 || y >= gh) return;
+      var s = self.xytos(x, y);
+      T[s] = 1;
+      Rarr[s] = 0;
+    }
+    // Random non-symmetric blocks: forbidden set, shuffle candidates, add blocks with connectivity check
+    function isConnected(T, gh, gw) {
+      var gs = T.length;
+      var freeCount = 0;
+      for (var i = 0; i < gs; i++) if (T[i] === 0) freeCount++;
+      var start = 0;
+      while (start < gs && T[start] !== 0) start++;
+      if (start >= gs) return true;
+      var queue = [start];
+      var visited = {};
+      while (queue.length > 0) {
+        var s = queue.shift();
+        if (T[s] !== 0) continue;
+        if (visited[s]) continue;
+        visited[s] = true;
+        var x = Math.floor(s / gh);
+        var y = s % gh;
+        var neighbors = [
+          (x - 1) * gh + y,
+          (x + 1) * gh + y,
+          x * gh + (y - 1),
+          x * gh + (y + 1)
+        ];
+        for (var n = 0; n < 4; n++) {
+          var ns = neighbors[n];
+          var nx = Math.floor(ns / gh);
+          var ny = ns % gh;
+          if (nx >= 0 && nx < gw && ny >= 0 && ny < gh && T[ns] === 0 && !visited[ns])
+            queue.push(ns);
+        }
+      }
+      var visitedCount = 0;
+      for (var k in visited) if (visited.hasOwnProperty(k)) visitedCount++;
+      return visitedCount === freeCount;
+    }
+    var forbidden = {};
+    for (var p = 0; p < SOURCE_DEST_PAIRS.length; p++) {
+      forbidden[SOURCE_DEST_PAIRS[p][0]] = true;
+      forbidden[SOURCE_DEST_PAIRS[p][1]] = true;
+    }
+    var candidates = [];
+    for (var s = 0; s < gs; s++) if (!forbidden[s]) candidates.push(s);
+    for (var i = candidates.length - 1; i >= 1; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = candidates[i];
+      candidates[i] = candidates[j];
+      candidates[j] = tmp;
+    }
+    var targetBlocks = 30 + Math.floor(Math.random() * 16);
+    var count = 0;
+    for (var i = 0; i < candidates.length && count < targetBlocks; i++) {
+      var c = candidates[i];
+      T[c] = 1;
+      Rarr[c] = 0;
+      if (!isConnected(T, gh, gw)) {
+        T[c] = 0;
+        Rarr[c] = -0.01;
+      } else {
+        count++;
+      }
+    }
+    for (var i = 0; i < gs; i++) {
+      if (T[i] === 0) Rarr[i] = -0.01;
+    }
+    this.Rarr = Rarr;
+    this.T = T;
+    this.buildAssumedTPM();
+  },
+
+  stox: function(s) { return Math.floor(s / this.gh); },
+  stoy: function(s) { return s % this.gh; },
+  xytos: function(x, y) {
+    if (x < 0 || x >= this.gw || y < 0 || y >= this.gh) return -1;
+    return x * this.gh + y;
+  },
+
+  allowedActions: function(s) {
+    var x = this.stox(s), y = this.stoy(s);
+    var as = [];
+    if (x > 0) as.push(0);
+    if (y > 0) as.push(1);
+    if (y < this.gh - 1) as.push(2);
+    if (x < this.gw - 1) as.push(3);
+    return as;
+  },
+
+  reward: function(s, a, ns) {
+    if (ns === this.goalState) return 1;
+    return this.Rarr[s];
+  },
+
+  buildAssumedTPM: function() {
+    var gs = this.gs, gh = this.gh, gw = this.gw, na = this.na;
+    var T = this.T;
+    var self = this;
+    this.TPM_assumed = [];
+    for (var sa = 0; sa < gs * na; sa++) {
+      this.TPM_assumed[sa] = R.zeros(gs);
+    }
+    for (var s = 0; s < gs; s++) {
+      if (T[s] === 1) continue;
+      var x = this.stox(s), y = this.stoy(s);
+      for (var a = 0; a < na; a++) {
+        var nx_int, ny_int, nx_l, ny_l, nx_r, ny_r;
+        if (a === 0) { nx_int = x - 1; ny_int = y; nx_l = x; ny_l = y - 1; nx_r = x; ny_r = y + 1; }
+        if (a === 1) { nx_int = x; ny_int = y - 1; nx_l = x - 1; ny_l = y; nx_r = x + 1; ny_r = y; }
+        if (a === 2) { nx_int = x; ny_int = y + 1; nx_l = x + 1; ny_l = y; nx_r = x - 1; ny_r = y; }
+        if (a === 3) { nx_int = x + 1; ny_int = y; nx_l = x; ny_l = y + 1; nx_r = x; ny_r = y - 1; }
+        var si = this.xytos(nx_int, ny_int);
+        var sl = this.xytos(nx_l, ny_l);
+        var sr = this.xytos(nx_r, ny_r);
+        if (si < 0 || T[si] === 1) si = s;
+        if (sl < 0 || T[sl] === 1) sl = s;
+        if (sr < 0 || T[sr] === 1) sr = s;
+        var sa = a * gs + s;
+        this.TPM_assumed[sa][si] += this.P_INTENDED;
+        this.TPM_assumed[sa][sl] += this.P_SLIP;
+        this.TPM_assumed[sa][sr] += this.P_SLIP;
+      }
+    }
+  },
+
+  getAssumedTPM: function() {
+    return this.TPM_assumed;
+  },
+
+  sampleNextState: function(s, a) {
+    var gs = this.gs;
+    var sa = a * gs + s;
+    var dist = this.TPM_assumed[sa];
+    var r = Math.random();
+    var cum = 0;
+    var ns = s;
+    for (var snext = 0; snext < gs; snext++) {
+      cum += dist[snext];
+      if (r <= cum) { ns = snext; break; }
+    }
+    var rwd = (ns === this.goalState) ? 1 : this.Rarr[s];
+    var out = { ns: ns, r: rwd };
+    if (ns === this.goalState) out.reset_episode = true;
+    return out;
+  },
+
+  nextStateDistribution: function(s, a) {
+    return this.sampleNextState(s, a).ns;
+  },
+
+  getNumStates: function() { return this.gs; },
+  getMaxNumActions: function() { return this.na; },
+  randomState: function() {
+    var s = Math.floor(Math.random() * this.gs);
+    while (this.T[s] === 1) s = Math.floor(Math.random() * this.gs);
+    return s;
+  },
+  startState: function() { return 0; }
+};
+
+// 10 source-destination pairs (valid free cells)
+var SOURCE_DEST_PAIRS = [
+  [0, 399], [19, 380], [380, 19], [399, 0], [1, 398],
+  [20, 379], [21, 378], [378, 21], [100, 299], [299, 100]
+];
+
+function isBlocked(env, s) {
+  return env.T[s] === 1;
+}
+
+function filterValidPairs(env) {
+  var out = [];
+  for (var i = 0; i < SOURCE_DEST_PAIRS.length; i++) {
+    var src = SOURCE_DEST_PAIRS[i][0], dest = SOURCE_DEST_PAIRS[i][1];
+    if (!isBlocked(env, src) && !isBlocked(env, dest)) out.push([src, dest]);
+  }
+  return out.length ? out : SOURCE_DEST_PAIRS;
+}
+
+// ----- 2. Trajectory generation -----
+function runEpisode(env, agent, source, dest, maxSteps, recordForADP) {
+  env.goalState = dest;
+  var state = source;
+  var trajectory = [state];
+    var totalReward = 0;
+  var steps = 0;
+  var success = false;
+  while (steps < maxSteps) {
+    var a = agent.act(state);
+    var obs = env.sampleNextState(state, a);
+    if (agent.learn && !recordForADP) agent.learn(obs.r);
+    if (recordForADP && agent.learnFromTransition) agent.learnFromTransition(state, a, obs.ns);
+    totalReward += obs.r;
+    state = obs.ns;
+    trajectory.push(state);
+    steps++;
+    if (state === dest) { success = true; if (agent.resetEpisode) agent.resetEpisode(); break; }
+    if (obs.reset_episode) { if (agent.resetEpisode) agent.resetEpisode(); break; }
+  }
+  return { trajectory: trajectory, reward: totalReward, success: success, steps: steps };
+}
+
+// ----- 3. Passive ADP agent -----
+var PassiveADPAgent = function(env, opt) {
+  this.env = env;
+  this.ns = env.getNumStates();
+  this.na = env.getMaxNumActions();
+  this.gamma = (opt && opt.gamma) || 0.9;
+  this.counts = {};
+  this.P = null;
+  this.reset();
+};
+
+PassiveADPAgent.prototype = {
+  reset: function() {
+    this.ns = this.env.getNumStates();
+    this.na = this.env.getMaxNumActions();
+    this.counts = {};
+    this.P = [];
+    for (var s = 0; s < this.ns; s++) {
+      var poss = this.env.allowedActions(s);
+      this.P[s] = [];
+      for (var a = 0; a < this.na; a++) {
+        this.P[s][a] = poss.indexOf(a) >= 0 ? 1 / poss.length : 0;
+      }
+    }
+  },
+
+  act: function(s) {
+    var poss = this.env.allowedActions(s);
+    if (poss.length === 0) return 0;
+    var probs = [];
+    for (var i = 0; i < poss.length; i++) probs.push(this.P[s][poss[i]] || 0);
+    var sum = 0;
+    for (var i = 0; i < probs.length; i++) sum += probs[i];
+    if (sum <= 0) return poss[Math.floor(Math.random() * poss.length)];
+    var r = Math.random() * sum;
+    var cum = 0;
+    for (var i = 0; i < poss.length; i++) {
+      cum += probs[i];
+      if (r <= cum) return poss[i];
+    }
+    return poss[poss.length - 1];
+  },
+
+  learnFromTransition: function(s, a, snext) {
+    var key = s + ',' + a + ',' + snext;
+    this.counts[key] = (this.counts[key] || 0) + 1;
+  },
+
+  getLearnedTPM: function() {
+    var gs = this.ns, na = this.na;
+    var TPM = [];
+    for (var sa = 0; sa < gs * na; sa++) TPM[sa] = R.zeros(gs);
+    for (var s = 0; s < gs; s++) {
+      var poss = this.env.allowedActions(s);
+      for (var ai = 0; ai < poss.length; ai++) {
+        var a = poss[ai];
+        var sa = a * gs + s;
+        var total = 0;
+        for (var snext = 0; snext < gs; snext++) {
+          var key = s + ',' + a + ',' + snext;
+          var c = this.counts[key] || 0;
+          TPM[sa][snext] = c;
+          total += c;
+        }
+        if (total > 0) {
+          for (var snext = 0; snext < gs; snext++) TPM[sa][snext] /= total;
+        }
+      }
+    }
+    return TPM;
+  },
+
+  evaluatePolicyUsingLearnedModel: function(numSweeps) {
+    numSweeps = numSweeps || 20;
+    var gs = this.ns, na = this.na;
+    var TPM = this.getLearnedTPM();
+    this.V = this.V || [];
+    for (var i = 0; i < gs; i++) this.V[i] = 0;
+    for (var sweep = 0; sweep < numSweeps; sweep++) {
+      var Vnew = [];
+      for (var s = 0; s < gs; s++) {
+        var v = 0;
+        var poss = this.env.allowedActions(s);
+        for (var i = 0; i < poss.length; i++) {
+          var a = poss[i];
+          var prob = this.P[s][a] || 0;
+          if (prob === 0) continue;
+          var sa = a * gs + s;
+          for (var snext = 0; snext < gs; snext++) {
+            var p = TPM[sa][snext] || 0;
+            if (p === 0) continue;
+            var r = this.env.reward(s, a, snext);
+            v += prob * p * (r + this.gamma * (this.V[snext] || 0));
+          }
+        }
+        Vnew[s] = v;
+      }
+      this.V = Vnew;
+    }
+  },
+
+  learn: function() {}
+};
+
+// ----- 4. Compare TPM -----
+function compareTPM(env, adpAgent) {
+  var assumed = env.getAssumedTPM();
+  var learned = adpAgent.getLearnedTPM();
+  var gs = env.gs, na = env.na;
+  var mseSum = 0, count = 0;
+  for (var sa = 0; sa < gs * na; sa++) {
+    var tot = 0;
+    for (var snext = 0; snext < gs; snext++) tot += learned[sa][snext];
+    if (tot < 1e-6) continue;
+    var mse = 0;
+    for (var snext = 0; snext < gs; snext++) {
+      var d = assumed[sa][snext] - learned[sa][snext];
+      mse += d * d;
+    }
+    mseSum += mse;
+    count++;
+  }
+  return { mse: count ? mseSum / count : 0, nSA: count };
+}
+
+// ----- 5. Globals and UI -----
+var env, adpAgent, qlAgent;
+var pairs = SOURCE_DEST_PAIRS;
+var trajectoriesADP = [];
+var trajectoriesQL = [];
+var cs = 28;
+var rs = {}, svg, policyArrows = {};
+var stepDelayMs = 150, isRunning = false, runCancelled = false;
+var lastADPSummaryHtml = '', lastQLSummaryHtml = '';
+var liveTrainingRunning = false;
+var liveAdpCount = 0, liveAdpSuccesses = 0, liveAdpData = [];
+var liveQlCount = 0, liveQlSuccesses = 0, liveQlData = [];
+var liveStepIndex = 0;
+var savedExperience = null;
+
+function delay(ms) {
+  return new Promise(function(r) { setTimeout(r, ms); });
+}
+function setRunButtonsEnabled(enabled) {
+  $('#btnGenTraj, #btnRunADP, #btnRunQL, #btnCompareTraj').prop('disabled', !enabled);
+}
+
+function saveExperience() {
+  savedExperience = {
+    ns: env.gs,
+    na: env.na,
+    adp: {
+      counts: Object.assign({}, adpAgent.counts),
+      P: adpAgent.P.map(function(row) { return row.slice(); })
+    },
+    ql: {
+      Q: qlAgent.Q.slice(),
+      P: qlAgent.P.slice()
+    }
+  };
+  try { localStorage.setItem('rover_saved_experience', JSON.stringify(savedExperience)); } catch (e) {}
+  $('#liveTrainingStatus').text('Experience saved. Run the assignment with "Use saved experience" checked to use it.');
+}
+
+function restoreExperience() {
+  if (!savedExperience || env.gs !== savedExperience.ns || env.na !== savedExperience.na) return false;
+  adpAgent.counts = Object.assign({}, savedExperience.adp.counts);
+  for (var s = 0; s < savedExperience.adp.P.length; s++) {
+    adpAgent.P[s] = savedExperience.adp.P[s].slice();
+  }
+  qlAgent.Q = savedExperience.ql.Q.slice();
+  qlAgent.P = savedExperience.ql.P.slice();
+  return true;
+}
+
+function initGrid() {
+  var d3elt = d3.select('#draw');
+  d3elt.html('');
+  rs = {};
+  policyArrows = {};
+  var gh = env.gh, gw = env.gw, gs = env.gs;
+  var w = gw * cs, h = gh * cs;
+  svg = d3elt.append('svg').attr('width', w).attr('height', h).append('g');
+  svg.append('defs').append('marker')
+    .attr('id', 'arrowhead')
+    .attr('refX', 3).attr('refY', 2)
+    .attr('markerWidth', 3).attr('markerHeight', 4)
+    .attr('orient', 'auto')
+    .append('path').attr('d', 'M 0,0 V 4 L3,2 Z');
+  for (var y = 0; y < gh; y++) {
+    for (var x = 0; x < gw; x++) {
+      var s = env.xytos(x, y);
+      var r = svg.append('rect')
+        .attr('x', x * cs).attr('y', y * cs)
+        .attr('width', cs).attr('height', cs)
+        .attr('fill', env.T[s] === 1 ? '#555' : '#fff')
+        .attr('stroke', '#333').attr('stroke-width', 1);
+      rs[s] = r;
+    }
+  }
+  var trajLayer = svg.append('g').attr('id', 'trajLayer');
+  var policyLayer = svg.insert('g', '#trajLayer').attr('id', 'policyLayer');
+  for (var s = 0; s < gs; s++) {
+    if (env.T[s] === 1) continue;
+    var cx = env.stox(s) * cs + cs / 2, cy = env.stoy(s) * cs + cs / 2;
+    policyArrows[s] = [];
+    for (var a = 0; a < 4; a++) {
+      var line = policyLayer.append('line')
+        .attr('x1', cx).attr('y1', cy).attr('x2', cx).attr('y2', cy)
+        .attr('stroke', '#555').attr('stroke-width', 1.5)
+        .attr('marker-end', 'url(#arrowhead)');
+      policyArrows[s].push(line);
+    }
+  }
+  svg.append('circle').attr('r', 6).attr('fill', '#0a0').attr('id', 'goalMark').attr('visibility', 'hidden');
+  svg.append('circle').attr('r', 6).attr('fill', '#a00').attr('id', 'srcMark').attr('visibility', 'hidden');
+  svg.append('circle').attr('r', 5).attr('fill', '#fc0').attr('stroke', '#000').attr('id', 'roverMark').attr('visibility', 'hidden');
+}
+
+function drawGrid(goalState, srcState) {
+  for (var s = 0; s < env.gs; s++) {
+    var col = env.T[s] === 1 ? '#555' : '#fff';
+    if (s === goalState) col = '#9f9';
+    if (s === srcState) col = '#f99';
+    rs[s].attr('fill', col);
+  }
+  if (goalState >= 0) {
+    var gx = env.stox(goalState), gy = env.stoy(goalState);
+    d3.select('#goalMark').attr('cx', gx * cs + cs / 2).attr('cy', gy * cs + cs / 2).attr('visibility', 'visible');
+  }
+  if (srcState >= 0) {
+    var sx = env.stox(srcState), sy = env.stoy(srcState);
+    d3.select('#srcMark').attr('cx', sx * cs + cs / 2).attr('cy', sy * cs + cs / 2).attr('visibility', 'visible');
+  }
+  drawPolicy(getSelectedPolicy());
+}
+
+function stateToXY(s) {
+  return [env.stox(s) * cs + cs / 2, env.stoy(s) * cs + cs / 2];
+}
+
+function getSelectedPairIdx() {
+  return parseInt($('#trajPairSelect').val(), 10) || 0;
+}
+function getSelectedAgentType() {
+  return $('#trajAgentSelect').val() || 'both';
+}
+function getSelectedTrajectoryFilter() {
+  return $('#trajWhichSelect').val() || 'all';
+}
+function getSelectedPolicy() {
+  return ($('#policySelect').val() || 'none');
+}
+
+function drawPolicy(which) {
+  var gs = env.gs;
+  var threshold = 0.01;
+  var getProb = function(s, a) { return 0; };
+  if (which === 'none') {
+    for (var s in policyArrows) {
+      if (!policyArrows.hasOwnProperty(s)) continue;
+      for (var a = 0; a < 4; a++) policyArrows[s][a].attr('visibility', 'hidden');
+    }
+    return;
+  }
+  if (which === 'adp' && typeof adpAgent !== 'undefined' && adpAgent) {
+    getProb = function(s, a) {
+      if (env.T[s] === 1) return 0;
+      return (adpAgent.P[s] && adpAgent.P[s][a] != null) ? adpAgent.P[s][a] : 0;
+    };
+  } else if (which === 'ql' && typeof qlAgent !== 'undefined' && qlAgent) {
+    getProb = function(s, a) {
+      if (env.T[s] === 1) return 0;
+      return (qlAgent.P && qlAgent.P[a * gs + s] != null) ? qlAgent.P[a * gs + s] : 0;
+    };
+  } else {
+    for (var s in policyArrows) {
+      if (!policyArrows.hasOwnProperty(s)) continue;
+      for (var a = 0; a < 4; a++) policyArrows[s][a].attr('visibility', 'hidden');
+    }
+    return;
+  }
+  for (var s in policyArrows) {
+    if (!policyArrows.hasOwnProperty(s)) continue;
+    var sNum = parseInt(s, 10);
+    var cx = env.stox(sNum) * cs + cs / 2, cy = env.stoy(sNum) * cs + cs / 2;
+    for (var a = 0; a < 4; a++) {
+      var prob = getProb(sNum, a);
+      var pa = policyArrows[s][a];
+      if (prob < threshold) {
+        pa.attr('visibility', 'hidden');
+      } else {
+        var scale = (cs / 2) * 0.9 * prob;
+        var nx = 0, ny = 0;
+        if (a === 0) nx = -scale;
+        if (a === 1) ny = -scale;
+        if (a === 2) ny = scale;
+        if (a === 3) nx = scale;
+        pa.attr('visibility', 'visible')
+          .attr('x1', cx).attr('y1', cy)
+          .attr('x2', cx + nx).attr('y2', cy + ny);
+      }
+    }
+  }
+}
+
+function drawTrajectories(pairIdx, agentType) {
+  d3.select('#trajLayer').selectAll('*').remove();
+  if (!pairs.length) return;
+  pairIdx = Math.min(pairIdx, pairs.length - 1);
+  var src = pairs[pairIdx][0], dest = pairs[pairIdx][1];
+  drawGrid(dest, src);
+  function pathFromPoints(pts) {
+    if (pts.length === 0) return '';
+    var d = 'M ' + pts[0][0] + ' ' + pts[0][1];
+    for (var i = 1; i < pts.length; i++) d += ' L ' + pts[i][0] + ' ' + pts[i][1];
+    return d;
+  }
+  var which = getSelectedTrajectoryFilter();
+  var drawOne = function(t, stroke, opacity) {
+    var pts = t.trajectory.map(stateToXY);
+    d3.select('#trajLayer').append('path').attr('d', pathFromPoints(pts)).attr('fill', 'none').attr('stroke', stroke).attr('stroke-width', 1.5).attr('opacity', opacity);
+  };
+  if (which !== 'all') {
+    var parts = which.split('-');
+    var agent = parts[0];
+    var idx = parseInt(parts[1], 10);
+    if (agent === 'adp') {
+      var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+      if (adpList[idx]) drawOne(adpList[idx], '#36c', 1);
+    } else if (agent === 'ql') {
+      var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+      if (qlList[idx]) drawOne(qlList[idx], '#3c6', 1);
+    }
+    return;
+  }
+  if (agentType === 'adp' || agentType === 'both') {
+    var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+    adpList.forEach(function(t) {
+      drawOne(t, '#36c', agentType === 'both' ? 0.5 : 0.8);
+    });
+  }
+  if (agentType === 'ql' || agentType === 'both') {
+    var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+    qlList.forEach(function(t) {
+      drawOne(t, '#3c6', agentType === 'both' ? 0.5 : 0.8);
+    });
+  }
+}
+
+function drawLiveTrajectoryOnGrid(pairIdx, trajectoriesWithColors) {
+  if (!pairs.length || pairIdx < 0 || pairIdx >= pairs.length) return;
+  var src = pairs[pairIdx][0], dest = pairs[pairIdx][1];
+  drawGrid(dest, src);
+  d3.select('#trajLayer').selectAll('*').remove();
+  function pathFromPoints(pts) {
+    if (pts.length === 0) return '';
+    var d = 'M ' + pts[0][0] + ' ' + pts[0][1];
+    for (var i = 1; i < pts.length; i++) d += ' L ' + pts[i][0] + ' ' + pts[i][1];
+    return d;
+  }
+  for (var i = 0; i < trajectoriesWithColors.length; i++) {
+    var item = trajectoriesWithColors[i];
+    if (!item.trajectory || !item.trajectory.length) continue;
+    var pts = item.trajectory.map(stateToXY);
+    d3.select('#trajLayer').append('path')
+      .attr('d', pathFromPoints(pts))
+      .attr('fill', 'none')
+      .attr('stroke', item.stroke || '#333')
+      .attr('stroke-width', 1.5);
+  }
+}
+
+function updateTrajectorySelectors() {
+  var $pair = $('#trajPairSelect');
+  var savedPair = $pair.val();
+  $pair.empty();
+  for (var i = 0; i < pairs.length; i++) {
+    $pair.append($('<option>').attr('value', i).text(i + 1));
+  }
+  var p = parseInt(savedPair, 10);
+  if (p >= 0 && p < pairs.length) $pair.val(p); else if (pairs.length) $pair.val(0);
+  var hasADP = trajectoriesADP.length > 0 && trajectoriesADP.some(function(t) { return t.trajectory; });
+  var hasQL = trajectoriesQL.length > 0 && trajectoriesQL.some(function(t) { return t.trajectory; });
+  $('#trajAgentSelect').prop('disabled', !hasADP && !hasQL);
+  var pairIdx = getSelectedPairIdx();
+  var agentType = getSelectedAgentType();
+  var $which = $('#trajWhichSelect');
+  $which.empty().append($('<option>').attr('value', 'all').text('All'));
+  var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+  var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === pairIdx && t.trajectory; });
+  if (agentType === 'adp' || agentType === 'both') {
+    for (var a = 0; a < adpList.length; a++) $which.append($('<option>').attr('value', 'adp-' + a).text('ADP #' + (a + 1)));
+  }
+  if (agentType === 'ql' || agentType === 'both') {
+    for (var q = 0; q < qlList.length; q++) $which.append($('<option>').attr('value', 'ql-' + q).text('QL #' + (q + 1)));
+  }
+  updateAnimTrajSelect();
+  drawTrajectories(pairIdx, agentType);
+}
+
+var animIntervalId = null;
+var animStepIndex = 0;
+var animCurrentTraj = null;
+var animCurrentReward = 0;
+
+function updateAnimTrajSelect() {
+  var $sel = $('#animTrajSelect');
+  $sel.empty().append($('<option>').attr('value', '').text('— Select trajectory —'));
+  var idx = 0;
+  trajectoriesADP.forEach(function(t, i) {
+    if (t.trajectory) {
+      $sel.append($('<option>').attr('value', 'adp-' + idx).data('traj', t).text('Pair ' + (t.pairIdx + 1) + ' ADP #' + (idx + 1)));
+      idx++;
+    }
+  });
+  idx = 0;
+  trajectoriesQL.forEach(function(t, i) {
+    if (t.trajectory) {
+      $sel.append($('<option>').attr('value', 'ql-' + idx).data('traj', t).text('Pair ' + (t.pairIdx + 1) + ' QL #' + (idx + 1)));
+      idx++;
+    }
+  });
+}
+
+function getSelectedAnimTrajectory() {
+  var opt = $('#animTrajSelect option:selected');
+  return opt.data('traj') || null;
+}
+
+function animShowStep(stepIndex, traj) {
+  if (!traj || !traj.trajectory) return;
+  var arr = traj.trajectory;
+  stepIndex = Math.min(stepIndex, arr.length - 1);
+  var s = arr[stepIndex];
+  var xy = stateToXY(s);
+  d3.select('#roverMark').attr('cx', xy[0]).attr('cy', xy[1]).attr('visibility', 'visible');
+  var done = stepIndex >= arr.length - 1;
+  var rewardText = done ? traj.reward.toFixed(2) : '—';
+  $('#animStatus').text('Step: ' + stepIndex + ' / ' + (arr.length - 1) + (done ? ' (Done)' : '') + '  Reward: ' + rewardText);
+}
+
+function animStep() {
+  if (!animCurrentTraj || !animCurrentTraj.trajectory) return;
+  var arr = animCurrentTraj.trajectory;
+  animStepIndex = Math.min(animStepIndex + 1, arr.length - 1);
+  animShowStep(animStepIndex, animCurrentTraj);
+  if (animStepIndex >= arr.length - 1) animPause();
+}
+
+function animPlay() {
+  if (!animCurrentTraj || !animCurrentTraj.trajectory) return;
+  if (animIntervalId) return;
+  var arr = animCurrentTraj.trajectory;
+  animIntervalId = setInterval(function() {
+    animStepIndex = Math.min(animStepIndex + 1, arr.length - 1);
+    animShowStep(animStepIndex, animCurrentTraj);
+    if (animStepIndex >= arr.length - 1) animPause();
+  }, 300);
+}
+
+function animPause() {
+  if (animIntervalId) {
+    clearInterval(animIntervalId);
+    animIntervalId = null;
+  }
+}
+
+function onAnimTrajChange() {
+  animPause();
+  animCurrentTraj = getSelectedAnimTrajectory();
+  animStepIndex = 0;
+  if (animCurrentTraj) {
+    var pairIdx = animCurrentTraj.pairIdx;
+    if (pairs[pairIdx]) {
+      drawGrid(pairs[pairIdx][1], pairs[pairIdx][0]);
+      d3.select('#trajLayer').selectAll('*').remove();
+    }
+    animShowStep(0, animCurrentTraj);
+  } else {
+    d3.select('#roverMark').attr('visibility', 'hidden');
+    $('#animStatus').text('Step: — Reward: —');
+  }
+}
+
+async function runGenerateTrajectories() {
+  if (isRunning) return;
+  var delayMs = parseInt($('#stepDelayMs').val(), 10) || 150;
+  isRunning = true;
+  runCancelled = false;
+  setRunButtonsEnabled(false);
+  $('#btnStop').prop('disabled', false);
+  try {
+    pairs = filterValidPairs(env);
+    var list = [];
+    var maxSteps = 500;
+    var total = pairs.length * 4;
+    outer: for (var i = 0; i < pairs.length; i++) {
+      var src = pairs[i][0], dest = pairs[i][1];
+      for (var t = 0; t < 4; t++) {
+        if (runCancelled) break outer;
+        var traj = runEpisode(env, adpAgent, src, dest, maxSteps, true);
+        list.push({ pairIdx: i, source: src, dest: dest, trajectory: traj.trajectory, steps: traj.steps, success: traj.success, reward: traj.reward });
+        trajectoriesADP = list;
+        $('#trajPairSelect').val(i);
+        updateTrajectorySelectors();
+        drawTrajectories(i, 'adp');
+        $('#trajResults').html('<p>Generated ' + list.length + ' / ' + total + ' trajectories (pair ' + (i + 1) + ')...</p>');
+        await delay(delayMs);
+      }
+    }
+    $('#trajResults').html('<p>Generated ' + list.length + ' trajectories over ' + pairs.length + ' source-destination pairs (passive ADP policy).</p>');
+    updateTrajectorySelectors();
+    if (pairs.length && list.length) drawTrajectories(getSelectedPairIdx(), 'adp');
+  } finally {
+    isRunning = false;
+    runCancelled = false;
+    setRunButtonsEnabled(true);
+    $('#btnStop').prop('disabled', true);
+  }
+}
+
+async function runPassiveADP() {
+  if (isRunning) return;
+  var delayMs = parseInt($('#stepDelayMs').val(), 10) || 150;
+  isRunning = true;
+  runCancelled = false;
+  setRunButtonsEnabled(false);
+  $('#btnStop').prop('disabled', false);
+  try {
+    pairs = filterValidPairs(env);
+    var useSaved = $('#useSavedExperience').is(':checked') && savedExperience && restoreExperience();
+    if (!useSaved) adpAgent.reset();
+    var list = [];
+    var maxSteps = 500;
+    var total = pairs.length * 2;
+    outer: for (var i = 0; i < pairs.length; i++) {
+      var src = pairs[i][0], dest = pairs[i][1];
+      for (var t = 0; t < 2; t++) {
+        if (runCancelled) break outer;
+        var traj = runEpisode(env, adpAgent, src, dest, maxSteps, true);
+        list.push({ pairIdx: i, source: src, dest: dest, trajectory: traj.trajectory, steps: traj.steps, success: traj.success, reward: traj.reward });
+        trajectoriesADP = list;
+        $('#trajPairSelect').val(i);
+        updateTrajectorySelectors();
+        drawTrajectories(i, 'adp');
+        var avgSoFar = 0, okSoFar = 0;
+        for (var j = 0; j < list.length; j++) { avgSoFar += list[j].steps; if (list[j].success) okSoFar++; }
+        avgSoFar /= list.length;
+        $('#trajResults').html((lastQLSummaryHtml || '') + '<p><b>Passive ADP</b> ' + list.length + '/' + total + ' trajectories (pair ' + (i + 1) + '). Running avg steps = ' + avgSoFar.toFixed(1) + ', success = ' + okSoFar + '/' + list.length + '</p>');
+        await delay(delayMs);
+      }
+    }
+    var avgSteps = 0, successCount = 0;
+    for (var j = 0; j < list.length; j++) {
+      avgSteps += list[j].steps;
+      if (list[j].success) successCount++;
+    }
+    avgSteps /= list.length;
+    lastADPSummaryHtml = '<p><b>Passive ADP</b> (20 trajectories): avg steps = ' + avgSteps.toFixed(1) + ', success rate = ' + (100 * successCount / list.length).toFixed(1) + '%</p>';
+    $('#trajResults').html(lastADPSummaryHtml + (lastQLSummaryHtml || ''));
+    updateTrajectorySelectors();
+    drawTrajectories(getSelectedPairIdx(), getSelectedAgentType());
+  } finally {
+    isRunning = false;
+    runCancelled = false;
+    setRunButtonsEnabled(true);
+    $('#btnStop').prop('disabled', true);
+  }
+}
+
+async function runQLearning() {
+  if (isRunning) return;
+  var delayMs = parseInt($('#stepDelayMs').val(), 10) || 150;
+  isRunning = true;
+  runCancelled = false;
+  setRunButtonsEnabled(false);
+  $('#btnStop').prop('disabled', false);
+  try {
+    pairs = filterValidPairs(env);
+    var useSaved = $('#useSavedExperience').is(':checked') && savedExperience && restoreExperience();
+    if (!useSaved) qlAgent.reset();
+    var list = [];
+    var maxSteps = 500;
+    var total = pairs.length * 2;
+    outer: for (var i = 0; i < pairs.length; i++) {
+      var src = pairs[i][0], dest = pairs[i][1];
+      env.goalState = dest;
+      for (var t = 0; t < 2; t++) {
+        if (runCancelled) break outer;
+        var traj = runEpisode(env, qlAgent, src, dest, maxSteps, false);
+        list.push({ pairIdx: i, source: src, dest: dest, trajectory: traj.trajectory, steps: traj.steps, success: traj.success, reward: traj.reward });
+        trajectoriesQL = list;
+        $('#trajPairSelect').val(i);
+        updateTrajectorySelectors();
+        drawTrajectories(i, 'ql');
+        drawPolicy(getSelectedPolicy());
+        var avgSoFar = 0, okSoFar = 0;
+        for (var j = 0; j < list.length; j++) { avgSoFar += list[j].steps; if (list[j].success) okSoFar++; }
+        avgSoFar /= list.length;
+        $('#trajResults').html((lastADPSummaryHtml || '') + '<p><b>Q-Learning</b> ' + list.length + '/' + total + ' trajectories (pair ' + (i + 1) + '). Running avg steps = ' + avgSoFar.toFixed(1) + ', success = ' + okSoFar + '/' + list.length + '</p>');
+        await delay(delayMs);
+      }
+    }
+    var avgSteps = 0, successCount = 0;
+    for (var j = 0; j < list.length; j++) {
+      avgSteps += list[j].steps;
+      if (list[j].success) successCount++;
+    }
+    avgSteps /= list.length;
+    lastQLSummaryHtml = '<p><b>Q-Learning</b> (20 trajectories): avg steps = ' + avgSteps.toFixed(1) + ', success rate = ' + (100 * successCount / list.length).toFixed(1) + '%</p>';
+    $('#trajResults').html((lastADPSummaryHtml || '') + lastQLSummaryHtml);
+    updateTrajectorySelectors();
+    drawTrajectories(getSelectedPairIdx(), getSelectedAgentType());
+    drawPolicy(getSelectedPolicy());
+  } finally {
+    isRunning = false;
+    runCancelled = false;
+    setRunButtonsEnabled(true);
+    $('#btnStop').prop('disabled', true);
+  }
+}
+
+function drawComparisonChart() {
+  if (trajectoriesADP.length === 0 || trajectoriesQL.length === 0) return;
+  var adpData = [], qlData = [];
+  for (var i = 0; i < pairs.length; i++) {
+    var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === i; });
+    var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === i; });
+    var adpSteps = 0, qlSteps = 0;
+    for (var k = 0; k < adpList.length; k++) adpSteps += adpList[k].steps;
+    for (var k = 0; k < qlList.length; k++) qlSteps += qlList[k].steps;
+    adpSteps = adpList.length ? adpSteps / adpList.length : 0;
+    qlSteps = qlList.length ? qlSteps / qlList.length : 0;
+    adpData.push([i + 1, adpSteps]);
+    qlData.push([i + 1, qlSteps]);
+  }
+  var series = [
+    { data: adpData, label: 'ADP avg steps', lines: { show: true }, points: { show: true } },
+    { data: qlData, label: 'Q-Learning avg steps', lines: { show: true }, points: { show: true } }
+  ];
+  $.plot($('#comparisonChart'), series, {
+    grid: { borderWidth: 1 },
+    xaxis: { min: 0.5, max: pairs.length + 0.5, tickFormatter: function(v) { return Math.round(v); } },
+    yaxis: { min: 0, label: 'Avg steps' },
+    legend: { position: 'nw' }
+  });
+}
+
+async function runCompareTrajectories() {
+  if (trajectoriesADP.length === 0 || trajectoriesQL.length === 0) {
+    $('#trajResults').html('<p>Run "Run passive ADP" and "Run Q-Learning" first to collect trajectories.</p>');
+    $('#comparisonChart').empty();
+    return;
+  }
+  if (isRunning) return;
+  var delayMs = parseInt($('#stepDelayMs').val(), 10) || 150;
+  isRunning = true;
+  runCancelled = false;
+  setRunButtonsEnabled(false);
+  $('#btnStop').prop('disabled', false);
+  try {
+    var header = '<h4>Trajectory comparison (≥20 per agent)</h4><table class="table table-bordered"><thead><tr><th>Pair</th><th>Source</th><th>Dest</th><th>ADP steps</th><th>ADP success</th><th>QL steps</th><th>QL success</th></tr></thead><tbody>';
+    var rowsHtml = '';
+    for (var i = 0; i < pairs.length; i++) {
+      if (runCancelled) break;
+      var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === i; });
+      var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === i; });
+      var adpSteps = 0, adpOk = 0, qlSteps = 0, qlOk = 0;
+      for (var k = 0; k < adpList.length; k++) { adpSteps += adpList[k].steps; if (adpList[k].success) adpOk++; }
+      for (var k = 0; k < qlList.length; k++) { qlSteps += qlList[k].steps; if (qlList[k].success) qlOk++; }
+      adpSteps = adpList.length ? adpSteps / adpList.length : 0;
+      qlSteps = qlList.length ? qlSteps / qlList.length : 0;
+      rowsHtml += '<tr><td>' + (i + 1) + '</td><td>' + pairs[i][0] + '</td><td>' + pairs[i][1] + '</td><td>' + adpSteps.toFixed(0) + '</td><td>' + adpOk + '/' + adpList.length + '</td><td>' + qlSteps.toFixed(0) + '</td><td>' + qlOk + '/' + qlList.length + '</td></tr>';
+      $('#trajResults').html(header + rowsHtml + '</tbody></table><p>Building comparison... pair ' + (i + 1) + '/' + pairs.length + '</p>');
+      await delay(delayMs);
+    }
+    var html = header + rowsHtml + '</tbody></table>';
+    html += '<h4>Each trajectory per pair</h4><table class="table table-bordered"><thead><tr><th>Pair</th><th>Agent</th><th>Traj #</th><th>Steps</th><th>Success</th></tr></thead><tbody>';
+    for (var i = 0; i < pairs.length; i++) {
+      var adpList = trajectoriesADP.filter(function(t) { return t.pairIdx === i; });
+      var qlList = trajectoriesQL.filter(function(t) { return t.pairIdx === i; });
+      for (var k = 0; k < adpList.length; k++) {
+        html += '<tr><td>' + (i + 1) + '</td><td>ADP</td><td>' + (k + 1) + '</td><td>' + adpList[k].steps + '</td><td>' + (adpList[k].success ? 'Yes' : 'No') + '</td></tr>';
+      }
+      for (var k = 0; k < qlList.length; k++) {
+        html += '<tr><td>' + (i + 1) + '</td><td>Q-Learning</td><td>' + (k + 1) + '</td><td>' + qlList[k].steps + '</td><td>' + (qlList[k].success ? 'Yes' : 'No') + '</td></tr>';
+      }
+    }
+    html += '</tbody></table>';
+    $('#trajResults').html(html);
+    drawComparisonChart();
+    drawTrajectories(getSelectedPairIdx(), getSelectedAgentType());
+  } finally {
+    isRunning = false;
+    runCancelled = false;
+    setRunButtonsEnabled(true);
+    $('#btnStop').prop('disabled', true);
+  }
+}
+
+function runCompareTPM() {
+  var res = compareTPM(env, adpAgent);
+  var msg = res.nSA === 0
+    ? 'No (s,a) data yet. Run "Generate 30+ trajectories" or "Run passive ADP" first to learn the TPM.'
+    : 'Mean MSE over (s,a) pairs with learned data: <b>' + res.mse.toFixed(6) + '</b>. Number of (s,a) with observations: ' + res.nSA + '.';
+  $('#tpmResults').html('<h4>TPM comparison (learned vs assumed)</h4><p>' + msg + '</p>');
+}
+
+function drawLiveTrainingChart() {
+  var series = [];
+  if (liveAdpData.length) {
+    series.push({ data: liveAdpData, label: 'ADP success %', lines: { show: true }, points: { show: false } });
+  }
+  if (liveQlData.length) {
+    series.push({ data: liveQlData, label: 'Q-Learning success %', lines: { show: true }, points: { show: false } });
+  }
+  if (series.length === 0) {
+    $('#liveTrainingChart').empty();
+    return;
+  }
+  var xMax = Math.max(liveAdpData.length ? liveAdpData[liveAdpData.length - 1][0] : 0, liveQlData.length ? liveQlData[liveQlData.length - 1][0] : 0);
+  $.plot($('#liveTrainingChart'), series, {
+    grid: { borderWidth: 1 },
+    xaxis: { min: 0, max: Math.max(1000, xMax + 2), label: 'Step' },
+    yaxis: { min: 0, max: 100, label: 'Success rate (%)' },
+    legend: { position: 'nw' }
+  });
+}
+
+async function runLiveTraining() {
+  var runADP = $('#liveTrainADP').is(':checked');
+  var runQL = $('#liveTrainQL').is(':checked');
+  if (!runADP && !runQL) {
+    $('#liveTrainingStatus').text('Select at least one agent (ADP or Q-Learning) to start.');
+    return;
+  }
+  liveTrainingRunning = true;
+  liveAdpCount = 0;
+  liveAdpSuccesses = 0;
+  liveAdpData = [];
+  liveQlCount = 0;
+  liveQlSuccesses = 0;
+  liveQlData = [];
+  liveStepIndex = 0;
+  $('#btnLiveStart').prop('disabled', true);
+  $('#btnLiveStop').prop('disabled', false);
+  setRunButtonsEnabled(false);
+  var maxSteps = 500;
+  var delayMs = 30;
+  try {
+    if (document.querySelector('.grid-wrapper')) document.querySelector('.grid-wrapper').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    while (liveTrainingRunning && pairs.length) {
+      var pairIdx = liveStepIndex % pairs.length;
+      var src = pairs[pairIdx][0], dest = pairs[pairIdx][1];
+      env.goalState = dest;
+      var trajAdp = null, trajQl = null;
+      if (runADP) {
+        trajAdp = runEpisode(env, adpAgent, src, dest, maxSteps, true);
+        liveAdpCount++;
+        if (trajAdp.success) liveAdpSuccesses++;
+        var adpRate = liveAdpCount ? 100 * liveAdpSuccesses / liveAdpCount : 0;
+        liveAdpData.push([liveStepIndex, adpRate]);
+      }
+      if (runQL) {
+        trajQl = runEpisode(env, qlAgent, src, dest, maxSteps, false);
+        liveQlCount++;
+        if (trajQl.success) liveQlSuccesses++;
+        var qlRate = liveQlCount ? 100 * liveQlSuccesses / liveQlCount : 0;
+        liveQlData.push([liveStepIndex, qlRate]);
+      }
+      var toShow = [];
+      if (trajAdp && trajAdp.trajectory) toShow.push({ trajectory: trajAdp.trajectory, stroke: '#36c' });
+      if (trajQl && trajQl.trajectory) toShow.push({ trajectory: trajQl.trajectory, stroke: '#3c6' });
+      if (toShow.length) drawLiveTrajectoryOnGrid(pairIdx, toShow);
+      liveStepIndex++;
+      var adpStr = runADP ? ('ADP: ' + liveAdpCount + ' episodes, success rate ' + (liveAdpCount ? (100 * liveAdpSuccesses / liveAdpCount).toFixed(1) : '—') + '%.') : '';
+      var qlStr = runQL ? ('Q-Learning: ' + liveQlCount + ' episodes, success rate ' + (liveQlCount ? (100 * liveQlSuccesses / liveQlCount).toFixed(1) : '—') + '%.') : '';
+      $('#liveTrainingStatus').text(adpStr + (adpStr && qlStr ? ' ' : '') + qlStr);
+      drawLiveTrainingChart();
+      await delay(delayMs);
+    }
+  } finally {
+    liveTrainingRunning = false;
+    $('#btnLiveStart').prop('disabled', false);
+    $('#btnLiveStop').prop('disabled', true);
+    setRunButtonsEnabled(true);
+  }
+}
+
+function start() {
+  env = new RoverGrid20();
+  adpAgent = new PassiveADPAgent(env, { gamma: 0.9 });
+  var spec = { update: 'qlearn', gamma: 0.9, epsilon: 0.2, alpha: 0.1, planN: 0 };
+  qlAgent = new RL.TDAgent(env, spec);
+  pairs = filterValidPairs(env);
+  initGrid();
+  updateTrajectorySelectors();
+  if (pairs.length) drawGrid(pairs[0][1], pairs[0][0]);
+  try {
+    var raw = localStorage.getItem('rover_saved_experience');
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.ns && parsed.adp && parsed.ql) savedExperience = parsed;
+    }
+  } catch (e) {}
+
+  $('#trajPairSelect, #trajAgentSelect').on('change', function() {
+    updateTrajectorySelectors();
+  });
+  $('#trajWhichSelect').on('change', function() {
+    drawTrajectories(getSelectedPairIdx(), getSelectedAgentType());
+  });
+  $('#policySelect').on('change', function() {
+    drawPolicy(getSelectedPolicy());
+    drawTrajectories(getSelectedPairIdx(), getSelectedAgentType());
+  });
+
+  $('#animTrajSelect').on('change', onAnimTrajChange);
+  $('#btnAnimPlay').on('click', animPlay);
+  $('#btnAnimPause').on('click', animPause);
+  $('#btnAnimStep').on('click', animStep);
+
+  $('#btnGenTraj').on('click', runGenerateTrajectories);
+  $('#btnRunADP').on('click', runPassiveADP);
+  $('#btnRunQL').on('click', runQLearning);
+  $('#btnCompareTraj').on('click', runCompareTrajectories);
+  $('#btnCompareTPM').on('click', runCompareTPM);
+  $('#btnStop').on('click', function() { runCancelled = true; });
+  $('#btnLiveStart').on('click', function() { runLiveTraining(); });
+  $('#btnLiveStop').on('click', function() { liveTrainingRunning = false; });
+  $('#btnSaveExperience').on('click', saveExperience);
+}
+
+$(document).ready(function() {
+  start();
+  if (window.mermaid) mermaid.run();
+});
+
+</script>
+</body>
+</html>
