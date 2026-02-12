@@ -33,9 +33,32 @@
 
   <style>
   #wrap {
-    width:800px;
+    max-width: 800px;
+    width: 100%;
     margin-left: auto;
     margin-right: auto;
+    padding: 0 12px;
+  }
+  #exp pre {
+    overflow-x: auto;
+  }
+  #exp img {
+    max-width: 100%;
+    height: auto;
+  }
+  @media (max-width: 768px) {
+    #wrap { padding: 0 8px; }
+    #mynav h1 { font-size: 24px !important; }
+    #mynav img { width: 36px !important; height: 36px !important; }
+    .nav.nav-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .nav.nav-pills li { margin: 2px 0; }
+    .library-overview-img {
+      float: none !important;
+      max-width: 100% !important;
+      margin: 12px 0 !important;
+      text-align: center;
+    }
+    .library-overview-img img { max-width: 100% !important; }
   }
   </style>
 
@@ -98,7 +121,7 @@ This project implements a comparison of **Passive ADP** (Adaptive Dynamic Progra
 
 The following describes the **original REINFORCEjs library** (by Karpathy) that this assignment builds on. It includes Dynamic Programming, Tabular TD (SARSA/Q-Learning), Deep Q-Learning, and Policy Gradient methods. For this assignment I used mainly the tabular TD agent and the environment/agent APIs.
 
-<div style="text-align:justify; margin: 20px; float:right; max-width:300px;">
+<div class="library-overview-img" style="text-align:justify; margin: 20px; float:right; max-width:300px;">
 <img src="img/dpsolved.jpeg" style="max-width:300px;"><br>
 Right: A simple Gridworld solved with Dynamic Programming (library demo).
 </div>
