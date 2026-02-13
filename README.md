@@ -29,6 +29,43 @@ This repository is my assignment submission comparing **Passive ADP** (Adaptive 
 
 This section documents the algorithms and equations used for **Passive ADP** and **Q-Learning** in this assignment, defines each term, and points to where they are implemented in the code.
 
+<details>
+<summary>Notation and applied mathematics (expand for details)</summary>
+
+### Notation (symbols)
+
+| Symbol | Meaning |
+|--------|---------|
+| s, s′, s″ | state; next state; dummy next state (summation index: s″ runs over all possible next states in expressions like Σ_{s″} N(s, a, s″)) |
+| a, a′ | action, next action |
+| N(s, a, s′) | visit count: number of times transition (s, a, s′) was observed |
+| P̂(s′ \| s, a) | estimated transition probability: P(next state = s′ given s, a) |
+| V(s) | state value: expected discounted return from s under policy π |
+| Q(s, a) | action-value: expected discounted return from (s, a) |
+| π(a\|s), π(s) | policy: probability of action a in state s, or greedy action at s |
+| γ | discount factor (0 ≤ γ < 1); weights future rewards |
+| α | learning rate (step size) for Q-updates |
+| ε | exploration rate: probability of random action in ε-greedy policy |
+| R(s, a, s′) | reward received for the transition (s, a, s′) |
+| argmax_a | action a that maximizes the following expression |
+| Σ, max | sum over actions/states; maximum over actions |
+
+### Applied mathematics
+
+**MDP (Markov Decision Process):** The environment is modeled as states, actions, transition probabilities P(s′|s,a), and rewards R(s,a,s′). The Markov property holds: the next state and reward depend only on the current state and action, not on earlier history.
+
+**Discounted return and γ:** The return is the sum of future rewards weighted by γ^t (t = 0, 1, 2, …). With γ < 1 this sum is finite and we favor nearer rewards over distant ones.
+
+**Value functions:** V^π(s) is the expected discounted return from state s when following policy π. Q^π(s,a) is the expected discounted return from taking action a in state s and then following π. The Bellman equation relates V(s) to the immediate reward and the value V(s′) of the next state.
+
+**Policy:** A policy maps each state to an action (or a distribution over actions). The greedy policy with respect to Q picks in each state s the action argmax_a Q(s,a).
+
+**TD error:** In Q-Learning, the temporal-difference error is target − Q(s,a) = r + γ max_{a′} Q(s′,a′) − Q(s,a). The update Q(s,a) := Q(s,a) + α · (target − Q(s,a)) moves Q toward the target.
+
+**Model-based vs model-free:** Model-based methods (e.g. Passive ADP) learn the transition model P(s′|s,a) and/or rewards, then plan (e.g. policy evaluation). Model-free methods (e.g. Q-Learning) learn V or Q directly from experience without estimating the transition model.
+
+</details>
+
 ### Passive ADP (model-based, passive)
 
 **Idea:** The agent follows a fixed policy (e.g. random) and only learns the transition model from observed (s, a, s′) triples. The policy is not improved—hence “passive.”
@@ -61,6 +98,20 @@ This section documents the algorithms and equations used for **Passive ADP** and
    - **R(s,a,s′)** — reward received for the transition (s, a, s′)  
 
 **How it works:** We collect trajectories under the fixed policy. For each transition (s, a, s′), we update the count N(s, a, s′). From the counts we compute P̂(s′|s,a). We then run several sweeps of the Bellman update above to compute V. The policy π used for acting does not change.
+
+**Pseudocode**
+
+```
+1. Initialize N(s, a, s') := 0 for all (s, a, s'). Fix policy π(a|s) (e.g. uniform over allowed actions).
+2. Collect trajectories: for each transition (s, a, s') observed under π, do:
+       N(s, a, s') := N(s, a, s') + 1
+3. Build transition model: for each (s, a, s'),
+       P̂(s' | s, a) := N(s, a, s') / Σ_{s″} N(s, a, s″)
+4. Policy evaluation: initialize V(s) arbitrarily (e.g. 0). For k = 1 to numSweeps:
+       For each state s:
+           V(s) := Σ_a π(a|s) Σ_{s'} P̂(s'|s,a) [ R(s,a,s') + γ V(s') ]
+5. (Policy π is unchanged; we do not improve it.)
+```
 
 **Implementation (rover_assignment.html):**
 
@@ -96,6 +147,21 @@ This section documents the algorithms and equations used for **Passive ADP** and
    - **ε** — exploration rate; balances exploration vs exploitation.  
 
 **How it works:** Each step: we are in state s, choose action a (ε-greedy), observe reward r and next state s′. We set the target = r + γ max_{a′} Q(s′, a′), then update Q(s, a) toward that target with step size α. We also update the policy at s to be greedy with respect to Q (so that when not exploring, we take argmax_a Q(s,a)). This repeats over many steps and episodes.
+
+**Pseudocode**
+
+```
+1. Initialize Q(s, a) for all (s, a) (e.g. 0). Set parameters α (learning rate), γ (discount), ε (exploration).
+2. For each episode:
+       s := start state
+       Repeat until s is terminal:
+           a := action from ε-greedy policy in s (with probability ε random, else argmax_a Q(s,a))
+           Take action a; observe reward r and next state s'
+           target := r + γ max_{a'} Q(s', a')
+           Q(s, a) := Q(s, a) + α (target − Q(s, a))
+           Update policy at s to greedy: π(s) := argmax_a Q(s, a)
+           s := s'
+```
 
 **Implementation (lib/rl.js, TDAgent with `update: 'qlearn'`):**
 

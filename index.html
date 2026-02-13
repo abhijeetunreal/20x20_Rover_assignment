@@ -60,6 +60,9 @@
     }
     .library-overview-img img { max-width: 100% !important; }
   }
+  details.notation-details { margin: 16px 0; border: 1px solid #ddd; border-radius: 6px; padding: 0 12px 12px; }
+  details.notation-details summary { cursor: pointer; font-weight: 600; padding: 8px 0; color: #058; }
+  details.notation-details[open] summary { margin-bottom: 8px; }
   </style>
 
   <script>
@@ -116,6 +119,62 @@ This project implements a comparison of **Passive ADP** (Adaptive Dynamic Progra
 - **Good fit for the problem** — Finite state/action grid MDPs are exactly what REINFORCEjs’s tabular agents are designed for. I could focus on the assignment design (trajectories, comparison, save/restore) instead of implementing Q-Learning from scratch.
 
 - **Educational** — The library is well-known in RL education, so using it made it easy to attribute sources and to align the assignment with standard textbook material (Sutton &amp; Barto).
+
+# Algorithm pseudocode
+
+High-level pseudocode for the two learning methods used in this assignment.
+
+## Passive ADP
+
+<pre><code>1. Initialize N(s, a, s') := 0 for all (s, a, s'). Fix policy π(a|s) (e.g. uniform over allowed actions).
+2. Collect trajectories: for each transition (s, a, s') observed under π, do:
+       N(s, a, s') := N(s, a, s') + 1
+3. Build transition model: for each (s, a, s'),
+       P̂(s' | s, a) := N(s, a, s') / Σ_{s″} N(s, a, s″)
+4. Policy evaluation: initialize V(s) arbitrarily (e.g. 0). For k = 1 to numSweeps:
+       For each state s:
+           V(s) := Σ_a π(a|s) Σ_{s'} P̂(s'|s,a) [ R(s,a,s') + γ V(s') ]
+5. (Policy π is unchanged; we do not improve it.)</code></pre>
+
+## Q-Learning
+
+<pre><code>1. Initialize Q(s, a) for all (s, a) (e.g. 0). Set parameters α (learning rate), γ (discount), ε (exploration).
+2. For each episode:
+       s := start state
+       Repeat until s is terminal:
+           a := action from ε-greedy policy in s (with probability ε random, else argmax_a Q(s,a))
+           Take action a; observe reward r and next state s'
+           target := r + γ max_{a'} Q(s', a')
+           Q(s, a) := Q(s, a) + α (target − Q(s, a))
+           Update policy at s to greedy: π(s) := argmax_a Q(s, a)
+           s := s'</code></pre>
+
+<details class="notation-details">
+<summary>Notation and applied mathematics (expand for details)</summary>
+<h4>Notation (symbols)</h4>
+<ul style="margin:8px 0; padding-left:20px;">
+<li><strong>s, s′, s″</strong> — state; next state; dummy next state (summation index: s″ runs over all possible next states in expressions like Σ_{s″} N(s, a, s″))</li>
+<li><strong>a, a′</strong> — action, next action</li>
+<li><strong>N(s, a, s′)</strong> — visit count: number of times transition (s, a, s′) was observed</li>
+<li><strong>P̂(s′ | s, a)</strong> — estimated transition probability: P(next state = s′ given s, a)</li>
+<li><strong>V(s)</strong> — state value: expected discounted return from s under policy π</li>
+<li><strong>Q(s, a)</strong> — action-value: expected discounted return from (s, a)</li>
+<li><strong>π(a|s), π(s)</strong> — policy: probability of action a in state s, or greedy action at s</li>
+<li><strong>γ</strong> — discount factor (0 ≤ γ &lt; 1); weights future rewards</li>
+<li><strong>α</strong> — learning rate (step size) for Q-updates</li>
+<li><strong>ε</strong> — exploration rate: probability of random action in ε-greedy policy</li>
+<li><strong>R(s, a, s′)</strong> — reward received for the transition (s, a, s′)</li>
+<li><strong>argmax_a</strong> — action a that maximizes the following expression</li>
+<li><strong>Σ, max</strong> — sum over actions/states; maximum over actions</li>
+</ul>
+<h4>Applied mathematics</h4>
+<p><strong>MDP (Markov Decision Process):</strong> The environment is modeled as states, actions, transition probabilities P(s′|s,a), and rewards R(s,a,s′). The Markov property holds: the next state and reward depend only on the current state and action, not on earlier history.</p>
+<p><strong>Discounted return and γ:</strong> The return is the sum of future rewards weighted by γ<sup>t</sup> (t = 0, 1, 2, …). With γ &lt; 1 this sum is finite and we favor nearer rewards over distant ones.</p>
+<p><strong>Value functions:</strong> V<sup>π</sup>(s) is the expected discounted return from state s when following policy π. Q<sup>π</sup>(s,a) is the expected discounted return from taking action a in state s and then following π. The Bellman equation relates V(s) to the immediate reward and the value V(s′) of the next state.</p>
+<p><strong>Policy:</strong> A policy maps each state to an action (or a distribution over actions). The greedy policy with respect to Q picks in each state s the action argmax_a Q(s,a).</p>
+<p><strong>TD error:</strong> In Q-Learning, the temporal-difference error is target − Q(s,a) = r + γ max_{a′} Q(s′,a′) − Q(s,a). The update Q(s,a) := Q(s,a) + α · (target − Q(s,a)) moves Q toward the target.</p>
+<p><strong>Model-based vs model-free:</strong> Model-based methods (e.g. Passive ADP) learn the transition model P(s′|s,a) and/or rewards, then plan (e.g. policy evaluation). Model-free methods (e.g. Q-Learning) learn V or Q directly from experience without estimating the transition model.</p>
+</details>
 
 # Library overview (REINFORCEjs)
 
